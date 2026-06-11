@@ -1,0 +1,90 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Rol {
+  ADMIN
+  USUARIO
+}
+
+enum EstadoTurno {
+  PENDIENTE
+  CONFIRMADO
+  CANCELADO
+  COMPLETADO
+}
+
+enum DiaSemana {
+  LUNES
+  MARTES
+  MIERCOLES
+  JUEVES
+  VIERNES
+  SABADO
+  DOMINGO
+}
+
+model Usuario {
+  id            String    @id @default(cuid())
+  nombre        String
+  email         String    @unique
+  passwordHash  String    @map("password_hash")
+  rol           Rol       @default(USUARIO)
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+  turnos        Turno[]
+
+  @@map("usuarios")
+}
+
+model Instalacion {
+  id          String    @id @default(cuid())
+  nombre      String
+  deporte     String
+  capacidad  Int       @default(1)
+  activo      Boolean   @default(true)
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+  turnos      Turno[]
+  horarios    HorarioHabilitado[]
+
+  @@map("instalaciones")
+}
+
+model HorarioHabilitado {
+  id              String    @id @default(cuid())
+  instalacionId   String    @map("instalacion_id")
+  instalacion     Instalacion @relation(fields: [instalacionId], references: [id], onDelete: Cascade)
+  diaSemana       DiaSemana @map("dia_semana")
+  horaInicio      String    @map("hora_inicio") // "08:00"
+  horaFin         String    @map("hora_fin")     // "22:00"
+  slotMinutos     Int       @default(60) @map("slot_minutos")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+
+  @@unique([instalacionId, diaSemana, horaInicio])
+  @@map("horarios_habilitados")
+}
+
+model Turno {
+  id              String    @id @default(cuid())
+  usuarioId       String    @map("usuario_id")
+  usuario         Usuario   @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  instalacionId   String    @map("instalacion_id")
+  instalacion     Instalacion @relation(fields: [instalacionId], references: [id], onDelete: Cascade)
+  fecha           DateTime  @db.Date
+  horaInicio      String    @map("hora_inicio") // "10:00"
+  horaFin         String    @map("hora_fin")     // "11:00"
+  estado          EstadoTurno @default(PENDIENTE)
+  notas           String?
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+
+  @@unique([instalacionId, fecha, horaInicio])
+  @@map("turnos")
+}
